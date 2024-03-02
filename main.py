@@ -4,6 +4,7 @@ import json
 import os
 import re
 
+
 # Updated default configuration with include patterns for source code files
 DEFAULT_CONFIG = {
     "include_patterns": [r"\.py$", r"\.js$", r"\.tsx$", r"\.java$", r"\.cpp$", r"\.c$", r"\.h$", r"\.cs$", r"\.php$",
@@ -21,8 +22,6 @@ DEFAULT_CONFIG = {
     }
 }
 
-
-# Utility functions and core functions go here
 
 def should_process_file(file_path, config):
     """Determine if the file should be processed based on include and exclude patterns."""
