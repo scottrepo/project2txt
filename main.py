@@ -4,19 +4,37 @@ import json
 import os
 import re
 
-# Configuration Defaults
+# Updated default configuration with include patterns for source code files
 DEFAULT_CONFIG = {
-    "exclude_patterns": [".git", "__pycache__", "node_modules"],
+    "include_patterns": [r"\.py$", r"\.js$", r"\.tsx$", r"\.java$", r"\.cpp$", r"\.c$", r"\.h$", r"\.cs$", r"\.php$",
+                         r"\.rb$", r"\.go$"],  # Add more as needed
+    "exclude_patterns": [r"\.git", r"__pycache__", r"\.md$", r"\.csv$", r"\.pdf$", r"venv"],
+    # Explicitly exclude certain patterns
     "comment_patterns": {
         ".py": "#",
         ".js": "//",
-        ".tsx": "//",
-        # More patterns can be added here for different languages
+        ".tsx": "//"
+        # Extend this based on the languages you want to support
     },
     "output_format": {
         "delimiter": "\n<<<FILENAME:{file_path}>>>\n"
     }
 }
+
+
+# Utility functions and core functions go here
+
+def should_process_file(file_path, config):
+    """Determine if the file should be processed based on include and exclude patterns."""
+    # Check for explicit exclusion first
+    for pattern in config["exclude_patterns"]:
+        if re.search(pattern, file_path):
+            return False
+    # Then check for inclusion (source code files)
+    for pattern in config["include_patterns"]:
+        if re.search(pattern, file_path):
+            return True
+    return False
 
 
 # Utility Functions
@@ -53,22 +71,36 @@ def parse_arguments():
 
 
 def process_file(file_path, config, output_file):
-    """Process individual files: filter, remove comments, and write to output."""
-    if should_exclude_file(file_path, config["exclude_patterns"]):
-        return  # File is excluded based on the config
+    # Check if the file should be processed based on inclusion and exclusion patterns
+    if not should_process_file(file_path, config):
+        print(f"Skipping {file_path}")
+        return  # Skip processing for this file
 
     file_extension = os.path.splitext(file_path)[1]
     comment_pattern = config["comment_patterns"].get(file_extension)
 
-    with open(file_path, 'r') as file:
-        file_content = file.read()
-        if comment_pattern:
-            file_content = remove_comments(file_content, comment_pattern)
+    try:
+        with open(file_path, 'r') as file:
+            file_content = file.read()
 
-    file_content = os.linesep.join([s for s in file_content.splitlines() if s.strip()])
-    with open(output_file, 'a') as out_file:
-        delimiter = config["output_format"]["delimiter"].format(file_path=file_path)
-        out_file.write(delimiter + file_content + "\n")
+            # Remove comments if a comment pattern is defined for the file extension
+            if comment_pattern:
+                # This is a simplistic approach; more complex logic might be needed for block comments, etc.
+                clean_content = re.sub(f"{comment_pattern}.*", "", file_content)
+
+                # Remove trailing whitespace and blank lines
+                clean_content = os.linesep.join([s for s in clean_content.splitlines() if s.strip()])
+            else:
+                # If no comment pattern, just trim whitespace and blank lines
+                clean_content = os.linesep.join([s for s in file_content.splitlines() if s.strip()])
+
+        # Write the processed content to the output file with the custom delimiter
+        with open(output_file, 'a') as out_file:
+            delimiter = config["output_format"]["delimiter"].format(file_path=file_path)
+            out_file.write(delimiter + clean_content + "\n")
+
+    except Exception as e:
+        print(f"Error processing file {file_path}: {e}")
 
 
 def process_project(project_path, output_dir, config):
